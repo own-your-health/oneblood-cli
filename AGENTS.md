@@ -95,3 +95,15 @@ holds nothing, with a temp `XDG_CONFIG_HOME`.
 - `tests/no_personal_data.rs`.
 
 `make verify` = fmt-check, clippy, test, smoke.
+
+## Dogfooding on synthetic data
+
+`ONEBLOOD_BASE_URL` points every read at a test's server instead of
+www.oneblood.org. It is honored only for a plain `http` origin on a
+loopback address, and only with `ONEBLOOD_KEYCHAIN_SERVICE` set, so no
+session the owner stored can be sent to it (`client::base_from`);
+`auth login --browser` refuses it. `scripts/fixture-site.py` serves
+`tests/fixtures/site/` that way, with `--status PATH=CODE` for the error
+paths and `--set-cookie` for the write-back; its docstring has the steps.
+A dogfood run stores a vault key under its test keychain service:
+`auth reset --force` under the same variables removes it.

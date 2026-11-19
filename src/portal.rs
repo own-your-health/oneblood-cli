@@ -31,9 +31,11 @@ pub struct Env {
 impl Env {
     /// The binary's: the vault, www.oneblood.org, [`client::PACE`] apart.
     pub fn for_binary() -> Result<Env, CliError> {
+        // The base first: a refused override reaches no vault.
+        let base = client::base()?;
         Ok(Env {
             sessions: SessionStore::open()?,
-            base: client::BASE.into(),
+            base,
             pace: client::PACE,
         })
     }

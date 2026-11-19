@@ -226,5 +226,7 @@ pub enum TestArg {
     BloodPressure,
     Pulse,
     Temperature,
+    /// The portal's "iron count".
+    #[value(alias = "iron")]
     Hemoglobin,
 }

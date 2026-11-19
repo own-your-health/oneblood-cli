@@ -55,6 +55,7 @@ fn bare() -> Command {
         .env("XDG_DATA_HOME", tmp())
         .env_remove("ONEBLOOD_CHROME")
         .env_remove("ONEBLOOD_PROFILE")
+        .env_remove("ONEBLOOD_BASE_URL")
         .env_remove("NO_COLOR");
     cmd
 }
@@ -295,6 +296,12 @@ fn ranges_and_tests_are_checked() {
         .args(["readings", "list", "--profile", "adult1", "--test", "sugar"])
         .assert()
         .code(2);
+    // The portal's own name for hemoglobin parses; the signed-out profile
+    // then stops it at the session.
+    oneblood()
+        .args(["readings", "list", "--profile", "adult1", "--test", "iron"])
+        .assert()
+        .code(3);
 }
 
 /// `api` reads only, and only the portal's data paths, refused before the
@@ -377,4 +384,42 @@ fn config_shows_the_profiles() {
         .assert()
         .success()
         .stdout(predicate::str::ends_with("config.json\n"));
+}
+
+/// `ONEBLOOD_BASE_URL` points reads at a test's loopback server only, and
+/// only with the test keychain service, refused before any vault is opened.
+#[test]
+fn the_base_url_override_is_for_loopback_tests_only() {
+    for url in [
+        "https://www.oneblood.org.example.com",
+        "http://example.com",
+        "http://127.0.0.1:1@example.com",
+    ] {
+        oneblood()
+            .env("ONEBLOOD_BASE_URL", url)
+            .args(["patients", "list", "--profile", "adult1"])
+            .assert()
+            .code(2)
+            .stderr(predicate::str::contains("ONEBLOOD_BASE_URL"));
+    }
+    oneblood()
+        .env_remove("ONEBLOOD_KEYCHAIN_SERVICE")
+        .env("ONEBLOOD_BASE_URL", "http://127.0.0.1:9")
+        .args(["patients", "list", "--profile", "adult1"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("ONEBLOOD_KEYCHAIN_SERVICE"));
+    oneblood()
+        .env("ONEBLOOD_BASE_URL", "http://127.0.0.1:9")
+        .args(["auth", "login", "--browser", "--profile", "adult1"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("real donor portal"));
+    // A loopback origin under the test service passes; the signed-out
+    // profile then stops it at the session, before a request.
+    oneblood()
+        .env("ONEBLOOD_BASE_URL", "http://127.0.0.1:9")
+        .args(["patients", "list", "--profile", "adult1"])
+        .assert()
+        .code(3);
 }

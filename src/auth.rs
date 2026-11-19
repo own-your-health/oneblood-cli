@@ -62,6 +62,13 @@ pub fn login(cmd: &LoginCmd, profile: &ProfileName, json: bool, quiet: bool) -> 
                 .into(),
         ));
     }
+    let base = crate::client::base()?;
+    if browser.browser && base != crate::client::BASE {
+        return Err(CliError::Usage(format!(
+            "--browser signs in to the real donor portal; unset {} for it",
+            crate::client::BASE_URL_ENV
+        )));
+    }
     let verify = !login.no_verify;
     let store = SessionStore::open()?;
     // Before Chrome opens or stdin is read, so no sign-in is spent on a
@@ -81,7 +88,9 @@ pub fn login(cmd: &LoginCmd, profile: &ProfileName, json: bool, quiet: bool) -> 
     }
     let session = match user_agent.as_deref() {
         None => browser_session(profile, browser.fresh_profile, verify, quiet)?,
-        Some(agent) => manual_session(&login.source.read(None)?, agent, verify, profile, site::confirm_session)?,
+        Some(agent) => manual_session(&login.source.read(None)?, agent, verify, profile, |cookie, agent| {
+            site::confirm_session_at(&base, cookie, agent)
+        })?,
     };
     store.put(profile, &session)?;
     if verify {
