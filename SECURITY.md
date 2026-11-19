@@ -14,8 +14,10 @@ Report a vulnerability privately through GitHub's "Report a vulnerability"
   30-second limit and no redirect followed. Every URL is built from that
   fixed origin. `ONEBLOOD_BASE_URL` replaces it for tests only: it is
   refused unless it is a plain `http` origin on 127.0.0.1, localhost or
-  `[::1]` and `ONEBLOOD_KEYCHAIN_SERVICE` names a test keychain service, so
-  a session the owner stored is never sent anywhere but OneBlood. `oneblood api` is held to the same: a `GET` of a portal data
+  `[::1]`, `ONEBLOOD_KEYCHAIN_SERVICE` names a test service
+  (`piekstra.oneblood.<suffix>`) and `XDG_CONFIG_HOME` is set away from
+  `~/.config`, so a session the owner stored is never sent anywhere but
+  OneBlood. `oneblood api` is held to the same: a `GET` of a portal data
   path, refused before anything is sent when it names the sign-in paths or
   an action.
 - A cookie the site changes is written back to the profile's session once

@@ -100,8 +100,10 @@ holds nothing, with a temp `XDG_CONFIG_HOME`.
 
 `ONEBLOOD_BASE_URL` points every read at a test's server instead of
 www.oneblood.org. It is honored only for a plain `http` origin on a
-loopback address, and only with `ONEBLOOD_KEYCHAIN_SERVICE` set, so no
-session the owner stored can be sent to it (`client::base_from`);
+loopback address, and only over a test's own store: a
+`ONEBLOOD_KEYCHAIN_SERVICE` of `piekstra.oneblood.<suffix>` and an
+`XDG_CONFIG_HOME` away from `~/.config` (`session::is_test_store`), so no
+session the owner stored can be sent to it;
 `auth login --browser` refuses it. `scripts/fixture-site.py` serves
 `tests/fixtures/site/` that way, with `--status PATH=CODE` for the error
 paths and `--set-cookie` for the write-back; its docstring has the steps.

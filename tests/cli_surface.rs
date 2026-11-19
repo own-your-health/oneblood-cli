@@ -409,6 +409,14 @@ fn the_base_url_override_is_for_loopback_tests_only() {
         .assert()
         .code(2)
         .stderr(predicate::str::contains("ONEBLOOD_KEYCHAIN_SERVICE"));
+    // The real service name is not a test's, wherever the vault is.
+    oneblood()
+        .env("ONEBLOOD_KEYCHAIN_SERVICE", "piekstra.oneblood")
+        .env("ONEBLOOD_BASE_URL", "http://127.0.0.1:9")
+        .args(["patients", "list", "--profile", "adult1"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("piekstra.oneblood.<suffix>"));
     oneblood()
         .env("ONEBLOOD_BASE_URL", "http://127.0.0.1:9")
         .args(["auth", "login", "--browser", "--profile", "adult1"])

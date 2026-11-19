@@ -54,15 +54,18 @@ pub fn tests_path(test_id: u32) -> String {
 /// The origin this process reads: [`BASE`], unless [`BASE_URL_ENV`] names a
 /// test's server.
 pub fn base() -> Result<String, CliError> {
-    base_from(std::env::var(BASE_URL_ENV).ok().as_deref(), crate::session::hermetic())
+    base_from(
+        std::env::var(BASE_URL_ENV).ok().as_deref(),
+        crate::session::is_test_store(),
+    )
 }
 
 /// The check behind [`base`], on the values passed in. The override is for
 /// a test's server: a plain `http` origin on a loopback address, and only
-/// with the test keychain service set, so no session the owner stored is
-/// sent to it. An ambient variable sending a real session elsewhere would
-/// be a way to steal it.
-pub fn base_from(value: Option<&str>, hermetic: bool) -> Result<String, CliError> {
+/// over a test's own session store (`session::is_test_store`), so no
+/// session the owner stored is sent to it. An ambient variable sending a
+/// real session elsewhere would be a way to steal it.
+pub fn base_from(value: Option<&str>, test_store: bool) -> Result<String, CliError> {
     let Some(value) = value.map(str::trim).filter(|v| !v.is_empty()) else {
         return Ok(BASE.to_string());
     };
@@ -71,9 +74,10 @@ pub fn base_from(value: Option<&str>, hermetic: bool) -> Result<String, CliError
             "{BASE_URL_ENV} {why}; it exists only to point tests at a server on this machine"
         ))
     };
-    if !hermetic {
+    if !test_store {
         return Err(refuse(&format!(
-            "needs {} set, so no stored session is sent to it",
+            "needs a test's own session store, so no session the owner stored is sent to it: {} naming a \
+             `piekstra.oneblood.<suffix>` service, and XDG_CONFIG_HOME set away from ~/.config",
             crate::session::KEYCHAIN_SERVICE_ENV
         )));
     }
@@ -502,7 +506,7 @@ mod tests {
             let b = base_from(Some(ok), true).unwrap();
             assert!(!b.ends_with('/'), "{b}");
         }
-        // Without the test keychain service, a real session could travel.
+        // Without a test's own store, a real session could travel.
         assert_eq!(
             base_from(Some("http://127.0.0.1:8080"), false).unwrap_err().exit_code(),
             2
