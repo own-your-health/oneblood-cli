@@ -246,7 +246,8 @@ impl Client {
     }
 
     fn get(&self, path: &str) -> Result<Answer, CliError> {
-        let what = format!("GET {}", crate::site::path_of(path));
+        // The whole path: the query says which reading (`?tests=5`).
+        let what = format!("GET {path}");
         if let Some(last) = self.last.get() {
             let since = last.elapsed();
             if since < self.pace {
@@ -269,7 +270,8 @@ impl Client {
                 return Err(if e.is_timeout() {
                     CliError::Upstream(format!("{what} timed out after {} s", TIMEOUT.as_secs()))
                 } else {
-                    CliError::Upstream(format!("{what} got no answer from www.oneblood.org"))
+                    let host = self.base.split_once("://").map_or(self.base.as_str(), |(_, h)| h);
+                    CliError::Upstream(format!("{what} got no answer from {host}"))
                 });
             }
         };
