@@ -250,6 +250,11 @@ fn a_failure_after_the_header_ends_the_stream_incomplete() {
     assert!(!finished.trailer.complete);
     let error = finished.trailer.error.as_ref().unwrap();
     assert_eq!(error.exit_code, Some(5));
+    assert!(
+        error.message.contains("GET /api/invita/mobileuser/resource/?tests=5"),
+        "{}",
+        error.message
+    );
     assert_eq!(oneblood::app::incomplete_exit(&finished.trailer), 5);
     let text = String::from_utf8(out).unwrap();
     assert!(text.lines().last().unwrap().contains("\"complete\":false"));
@@ -336,4 +341,20 @@ fn the_api_returns_the_answer_whole() {
     let v = site.api(&path).unwrap();
     assert_eq!(v["status"], "success");
     assert!(v["data"]["tests"].is_array());
+}
+
+#[test]
+fn no_answer_names_the_server_read() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    drop(listener);
+    let server = Server {
+        base: base.clone(),
+        seen: Arc::new(Mutex::new(Vec::new())),
+    };
+    let env = env(&server, "no-answer");
+    let e = portal::patients(&Site::open(&env, &adult1()).unwrap()).unwrap_err();
+    assert_eq!(e.exit_code(), 5);
+    let host = base.trim_start_matches("http://");
+    assert!(e.to_string().contains(&format!("got no answer from {host}")), "{e}");
 }
