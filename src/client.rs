@@ -31,6 +31,9 @@ use crate::session::Session;
 
 /// The site's origin.
 pub const BASE: &str = "https://www.oneblood.org";
+/// Points the reads at a test's loopback server instead of [`BASE`]
+/// ([`base`]).
+pub const BASE_URL_ENV: &str = "ONEBLOOD_BASE_URL";
 /// The least time between one answer and the next request.
 pub const PACE: Duration = Duration::from_millis(750);
 const TIMEOUT: Duration = Duration::from_secs(30);
@@ -46,6 +49,52 @@ pub const DONATIONS: &str = "/api/invita/mobileuser/resource/?donations=1";
 /// One reading's history: `/api/invita/mobileuser/resource/?tests=<id>`.
 pub fn tests_path(test_id: u32) -> String {
     format!("{USER}/?tests={test_id}")
+}
+
+/// The origin this process reads: [`BASE`], unless [`BASE_URL_ENV`] names a
+/// test's server.
+pub fn base() -> Result<String, CliError> {
+    base_from(
+        std::env::var(BASE_URL_ENV).ok().as_deref(),
+        crate::session::is_test_store(),
+    )
+}
+
+/// The check behind [`base`], on the values passed in. The override is for
+/// a test's server: a plain `http` origin on a loopback address, and only
+/// over a test's own session store (`session::is_test_store`), so no
+/// session the owner stored is sent to it. An ambient variable sending a
+/// real session elsewhere would be a way to steal it.
+pub fn base_from(value: Option<&str>, test_store: bool) -> Result<String, CliError> {
+    let Some(value) = value.map(str::trim).filter(|v| !v.is_empty()) else {
+        return Ok(BASE.to_string());
+    };
+    let refuse = |why: &str| {
+        CliError::Usage(format!(
+            "{BASE_URL_ENV} {why}; it exists only to point tests at a server on this machine"
+        ))
+    };
+    if !test_store {
+        return Err(refuse(&format!(
+            "needs a test's own session store, so no session the owner stored is sent to it: {} naming a \
+             `piekstra.oneblood.<suffix>` service, and XDG_CONFIG_HOME set away from ~/.config",
+            crate::session::KEYCHAIN_SERVICE_ENV
+        )));
+    }
+    let url = reqwest::Url::parse(value).map_err(|_| refuse("is not a URL"))?;
+    let loopback = matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"));
+    let plain = url.scheme() == "http"
+        && url.username().is_empty()
+        && url.password().is_none()
+        && url.path() == "/"
+        && url.query().is_none()
+        && url.fragment().is_none();
+    if !(loopback && plain) {
+        return Err(refuse(
+            "must be an http origin on a loopback address, like http://127.0.0.1:8080",
+        ));
+    }
+    Ok(url.as_str().trim_end_matches('/').to_string())
 }
 
 /// A session's cookies, in the order the header gave them.
@@ -442,6 +491,39 @@ mod tests {
 
     fn adult1() -> ProfileName {
         ProfileName::parse("adult1").unwrap()
+    }
+
+    #[test]
+    fn the_base_is_the_site_unless_a_test_points_it_at_loopback() {
+        assert_eq!(base_from(None, false).unwrap(), BASE);
+        assert_eq!(base_from(Some("  "), false).unwrap(), BASE);
+        for ok in [
+            "http://127.0.0.1:8080",
+            "http://127.0.0.1:8080/",
+            "http://localhost:9",
+            "http://[::1]:9",
+        ] {
+            let b = base_from(Some(ok), true).unwrap();
+            assert!(!b.ends_with('/'), "{b}");
+        }
+        // Without a test's own store, a real session could travel.
+        assert_eq!(
+            base_from(Some("http://127.0.0.1:8080"), false).unwrap_err().exit_code(),
+            2
+        );
+        for bad in [
+            "https://www.oneblood.org.example.com",
+            "http://example.com",
+            "http://127.0.0.1:1@example.com",
+            "http://user@localhost:8",
+            "https://127.0.0.1:8",
+            "http://127.0.0.1:8/api",
+            "http://127.0.0.1:8/?x=1",
+            "http://127.0.0.2:8",
+            "127.0.0.1:8",
+        ] {
+            assert_eq!(base_from(Some(bad), true).unwrap_err().exit_code(), 2, "{bad}");
+        }
     }
 
     fn answer(status: u16, content_type: &str, body: &str) -> Answer {

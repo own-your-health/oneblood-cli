@@ -76,6 +76,15 @@ pub fn confirm_session(cookie_header: &str, user_agent: Option<&str>) -> Confirm
     confirm_at(SESSION_CHECK_URL, cookie_header, user_agent)
 }
 
+/// [`confirm_session`] against `base` (`client::base`): the real site, or a
+/// test's loopback server.
+pub fn confirm_session_at(base: &str, cookie_header: &str, user_agent: Option<&str>) -> Confirm {
+    if base == crate::client::BASE {
+        return confirm_session(cookie_header, user_agent);
+    }
+    confirm_at(&format!("{base}{}", crate::client::USER), cookie_header, user_agent)
+}
+
 /// How the answer from [`SESSION_CHECK_URL`] shows a signed-in donor.
 ///
 /// `Ready` for a JSON answer `{"status": "success", "data": {...}}`: only a

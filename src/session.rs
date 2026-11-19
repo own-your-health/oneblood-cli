@@ -192,6 +192,35 @@ pub fn hermetic() -> bool {
     service_override(service_env().as_deref()).is_some()
 }
 
+/// Whether the store is a test's own, apart from the owner's in both of its
+/// halves: [`KEYCHAIN_SERVICE_ENV`] names a service under
+/// `piekstra.oneblood.`, never the real one, and `$XDG_CONFIG_HOME` is not
+/// the `~/.config` the owner's vault is under. Only then may
+/// `ONEBLOOD_BASE_URL` send reads elsewhere (`client::base`).
+pub fn is_test_store() -> bool {
+    let home = std::env::var_os("HOME").filter(|v| !v.is_empty()).map(PathBuf::from);
+    let config = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from);
+    test_store_from(service_env().as_deref(), config.as_deref(), home.as_deref())
+}
+
+/// [`is_test_store`] on the values passed in.
+fn test_store_from(service: Option<&str>, config: Option<&std::path::Path>, home: Option<&std::path::Path>) -> bool {
+    let test_service = service_override(service)
+        .and_then(|s| s.strip_prefix(KEYCHAIN_SERVICE_PREFIX))
+        .is_some_and(|rest| !rest.is_empty());
+    let (Some(config), Some(home)) = (config, home) else {
+        return false;
+    };
+    let owners = home.join(".config");
+    let same = config == owners || matches!((config.canonicalize(), owners.canonicalize()), (Ok(a), Ok(b)) if a == b);
+    test_service && !same
+}
+
+/// What a test keychain service starts with: the real one and a dot.
+const KEYCHAIN_SERVICE_PREFIX: &str = "piekstra.oneblood.";
+
 /// A test's vault: under `$XDG_CONFIG_HOME/oneblood`, which must be set, so a
 /// test never opens the owner's `~/.config/oneblood/vault`.
 fn test_vault_dir() -> Result<PathBuf, CliError> {
@@ -225,6 +254,38 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("oneblood-session-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         dir
+    }
+
+    #[test]
+    fn a_test_store_is_apart_from_the_owners_in_both_halves() {
+        use std::path::Path;
+        let home = Path::new("/nonexistent-home");
+        let elsewhere = Path::new("/nonexistent-tmp/cfg");
+        assert!(test_store_from(
+            Some("piekstra.oneblood.hermetic-tests"),
+            Some(elsewhere),
+            Some(home)
+        ));
+        for service in [
+            None,
+            Some(""),
+            Some("piekstra.oneblood"),
+            Some("piekstra.oneblood."),
+            Some("other.test"),
+        ] {
+            assert!(!test_store_from(service, Some(elsewhere), Some(home)), "{service:?}");
+        }
+        // The owner's own config directory, spelled out or not set at all.
+        let owners = home.join(".config");
+        assert!(!test_store_from(Some("piekstra.oneblood.x"), Some(&owners), Some(home)));
+        assert!(!test_store_from(Some("piekstra.oneblood.x"), None, Some(home)));
+        assert!(!test_store_from(Some("piekstra.oneblood.x"), Some(elsewhere), None));
+        // The same directory by another path.
+        let real = std::env::temp_dir().join(format!("oneblood-home-{}", std::process::id()));
+        std::fs::create_dir_all(real.join(".config")).unwrap();
+        let other = real.join(".config").join("..").join(".config");
+        assert!(!test_store_from(Some("piekstra.oneblood.x"), Some(&other), Some(&real)));
+        let _ = std::fs::remove_dir_all(&real);
     }
 
     fn adult1() -> ProfileName {
