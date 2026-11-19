@@ -1,0 +1,24 @@
+{
+  "status": "success",
+  "data": {
+    "id": "0",
+    "donor_id": "SYND000001",
+    "user_type": "donor",
+    "first_name": "Alex",
+    "last_name": "Example",
+    "username": "alex@example.com",
+    "blood_type": "O Positive",
+    "address": "100 Example St, Exampleton, FL 00000",
+    "emails": [
+      {
+        "email": "alex@example.com"
+      }
+    ],
+    "phones": [
+      {
+        "phone_type_name": "Mobile",
+        "number": "5550100001"
+      }
+    ]
+  }
+}
