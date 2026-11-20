@@ -1,23 +1,67 @@
 {
   "status": "success",
-  "data": [
-    {
-      "date": "2025-08-02",
-      "procedure": "Whole Blood",
-      "location": "Example Donor Center",
-      "center_id": "101"
-    },
-    {
-      "date": "2025-03-14",
-      "procedure": "Platelets",
-      "location": "Example Bus at Exampleton Park",
-      "center_id": "0"
-    },
-    {
-      "date": "2024-11-09",
-      "procedure": "Whole Blood",
-      "location": "Example Donor Center",
-      "center_id": "101"
-    }
-  ]
+  "response_timestamp": "Fri, 01 Jan 2027 00:00:00 +0000",
+  "data": {
+    "donations": [
+      {
+        "date": "2025-08-02",
+        "id": "00000003",
+        "center_id": "101",
+        "procedure": "Whole Blood",
+        "donation_type": "Example Donation Type",
+        "donation_status": "Donation",
+        "concierge": 0,
+        "location_type_text": "Center",
+        "location": "Example Donor Center",
+        "location_id": 3,
+        "sponsor_code": "00001",
+        "unit_number": "SYNU000000003",
+        "survey_taken": false,
+        "survey_available": false,
+        "points_earned": "100",
+        "optimum_donation": "No",
+        "donation_category": "WB"
+      },
+      {
+        "date": "2025-03-14",
+        "id": "00000002",
+        "center_id": "0",
+        "procedure": "Platelets",
+        "donation_type": "Example Donation Type",
+        "donation_status": "Donation",
+        "concierge": 0,
+        "location_type_text": "Bloodmobile",
+        "location": "Example Bus at Exampleton Park",
+        "location_id": 2,
+        "sponsor_code": "00001",
+        "unit_number": "SYNU000000002",
+        "survey_taken": false,
+        "survey_available": false,
+        "points_earned": "100",
+        "optimum_donation": "No",
+        "donation_category": "WB"
+      },
+      {
+        "date": "2024-11-09",
+        "id": "00000001",
+        "center_id": "101",
+        "procedure": "Whole Blood",
+        "donation_type": "Example Donation Type",
+        "donation_status": "Donation",
+        "concierge": 0,
+        "location_type_text": "Center",
+        "location": "Example Donor Center",
+        "location_id": 1,
+        "sponsor_code": "00001",
+        "unit_number": "SYNU000000001",
+        "survey_taken": false,
+        "survey_available": false,
+        "points_earned": "100",
+        "optimum_donation": "No",
+        "donation_category": "WB"
+      }
+    ]
+  },
+  "rows": 3,
+  "token": "example-token"
 }

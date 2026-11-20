@@ -6,9 +6,12 @@ real answer was copied to write them.
 ## site/
 
 The donor portal's answers to oneblood's reads (`docs/api.md`), one per
-answer. Their structure follows the real answers: the same envelope
-(`status`, `data`), keys, nesting and types. Every value is invented, in the
-dummy shapes below.
+answer. Their structure is the real answers', observed on 2026-11-20: the
+same envelope (`status`, `response_timestamp`, `data`, `rows`, `token`),
+keys, nesting and types (every value a string, as the portal sends it,
+except the booleans and the few integers it sends). Every value is
+invented, in the dummy shapes below; the test names (`test_type_name`)
+are the portal's own fixed words.
 
 | File | The answer to |
 |---|---|
@@ -26,5 +29,9 @@ Dummy shapes, enforced by `tests/no_personal_data.rs`:
 | `username`, `email` | `@example.com` |
 | `number` (phones) | `555-01xx` |
 | `address`, `location` | names with `Example` or `Exampleton`; ZIP codes all zeros |
+| `unit_number` (a blood unit's number) | `SYNU` + 9 digits |
+| `becs_id`, `sponsor_code` | zeros then one digit |
+| `birth_date` | a January first |
+| `avatar.image_data`, `token` | `AAAA`, `example-token` |
 
 The readings are plausible numbers, not anyone's.
