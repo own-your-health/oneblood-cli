@@ -5,10 +5,11 @@ pages on www.oneblood.org (an Adobe Experience Manager site) whose scripts
 read same-origin JSON with a cookie session. oneblood reads that JSON, as
 the pages do, with `GET`s only.
 
-Status: the paths and answer fields below were read from the site's public
-pages and its script bundle (`clientlib-site`), without signing in. Each is
-confirmed against the signed-in portal's own traffic before a release; a
-line marked *bundle* is not yet.
+Status: sign-in steps 1 to 3 were observed on the portal on 2026-11-19.
+Everything else (sign-in steps 4 and 5, and every read under "Reads") was
+read from the site's public pages and its script bundle
+(`clientlib-site`) and is not yet confirmed against signed-in traffic; it
+is marked *bundle*.
 
 ## Where the portal is
 
