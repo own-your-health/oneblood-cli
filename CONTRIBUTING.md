@@ -10,5 +10,5 @@
 4. An endpoint change is observed on the signed-in portal first and
    recorded in `docs/api.md`, traps included.
 5. Drive the installed binary on synthetic data before calling a change
-   done: `scripts/fixture-site.py` (AGENTS.md, "Dogfooding").
+   done: `make install dogfood` (AGENTS.md, "Dogfooding").
 6. Squash merges only, with an approval and green CI.

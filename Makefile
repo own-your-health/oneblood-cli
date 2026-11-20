@@ -1,7 +1,7 @@
 BIN := oneblood
 CARGO ?= cargo
 
-.PHONY: build release test lint fmt fmt-check clean install deps smoke verify dev
+.PHONY: build release test lint fmt fmt-check clean install deps smoke verify dev dogfood
 
 # Every target that produces a binary signs it (cli-common's dev-sign.sh), so
 # the code identity stays stable between builds. oneblood keeps one keychain
@@ -74,3 +74,9 @@ if [ -x "$$HOME/Dev/cli-common/scripts/dev-sign.sh" ]; then \
 	"$$HOME/Dev/cli-common/scripts/dev-sign.sh" "$(SIGN_TARGET)"; \
 else echo "cli-common/scripts/dev-sign.sh not found — $(SIGN_TARGET) left ad-hoc signed"; fi
 endef
+
+# Every command and error path, on synthetic data, against the installed
+# oneblood (or DOGFOOD_BIN=<path>). Not part of verify: it needs a keychain
+# and free local ports (scripts/dogfood.sh).
+dogfood:
+	@scripts/dogfood.sh $(DOGFOOD_BIN)

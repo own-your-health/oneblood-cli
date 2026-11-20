@@ -109,3 +109,11 @@ session the owner stored can be sent to it;
 paths and `--set-cookie` for the write-back; its docstring has the steps.
 A dogfood run stores a vault key under its test keychain service:
 `auth reset --force` under the same variables removes it.
+
+`make dogfood` (`scripts/dogfood.sh [BINARY]`, the installed `oneblood` by
+default) does all of it: it starts three fixture sites (the fixtures, one
+answering 503 and 429, one 401 and 302), drives every command and error
+path, checks exit codes and counts, prints one row per case and exits 1 if
+any failed. Its vault key is created by the binary under test, so it raises
+no keychain dialog, and is removed when it ends. It is not part of `make
+verify`: it needs a keychain (or Secret Service) and free local ports.

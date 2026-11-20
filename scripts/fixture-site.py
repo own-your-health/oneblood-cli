@@ -14,6 +14,9 @@ A request without the `dummy_session` cookie gets the signed-out answer.
 `--status PATH=CODE` answers PATH (path and query, as sent) with that HTTP
 status and an empty JSON body, for the error paths; `--set-cookie VALUE`
 adds a Set-Cookie to every answer, for the write-back.
+
+`scripts/dogfood.sh` (`make dogfood`) runs every command and error path this
+way.
 """
 
 import argparse

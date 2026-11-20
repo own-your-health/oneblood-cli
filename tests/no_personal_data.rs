@@ -137,17 +137,26 @@ fn scan_line(line: &str) -> Vec<String> {
         }
     }
     let lower = line.to_ascii_lowercase();
-    for suffix in [" way", " st", " ave", " blvd", " dr", " ln", " ct", " rd"] {
-        if let Some(pos) = lower.find(suffix) {
-            let has_number = lower[..pos]
-                .split_whitespace()
-                .rev()
-                .take(4)
-                .any(|w| w.len() >= 3 && w.chars().all(|c| c.is_ascii_digit()));
-            if has_number && !lower.contains("example st") {
-                findings.push(format!("address-like `{}`", line.trim()));
-            }
-        }
+    // A street suffix as a whole word ("St", not "status"), anywhere on the
+    // line, with a house number in the four words before it.
+    let address_like = [" way", " st", " ave", " blvd", " dr", " ln", " ct", " rd"]
+        .iter()
+        .any(|suffix| {
+            lower.match_indices(suffix).any(|(pos, _)| {
+                let whole_word = !lower[pos + suffix.len()..]
+                    .chars()
+                    .next()
+                    .is_some_and(|c| c.is_ascii_alphanumeric());
+                whole_word
+                    && lower[..pos]
+                        .split_whitespace()
+                        .rev()
+                        .take(4)
+                        .any(|w| w.len() >= 3 && w.chars().all(|c| c.is_ascii_digit()))
+            })
+        });
+    if address_like && !lower.contains("example st") {
+        findings.push(format!("address-like `{}`", line.trim()));
     }
     findings
 }
@@ -287,6 +296,7 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "lives at 1234 NW Oak St, Somewhere",
         "donor 7342918",
         "call 772-404-1234 at 2025-08-02 12:00:00",
+        "the status was 200, then 1234 Oak St",
     ] {
         assert!(!scan_line(real).is_empty(), "missed: {real}");
     }
@@ -298,6 +308,7 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "100 Example St, Exampleton",
         "2025-03-14",
         "\"created\": \"2025-08-02 12:00:00\"",
+        "one 401 and 302), drives every command",
     ] {
         assert!(
             scan_line(dummy).is_empty(),
