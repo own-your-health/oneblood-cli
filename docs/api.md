@@ -17,22 +17,27 @@ line marked *bundle* is not yet.
 - Sign-in: `https://www.oneblood.org/sign-in.html`. Signed-in pages are
   under `/donor-portal/` (account settings, health summary, history).
 
-## Sign-in (bundle)
+## Sign-in
 
-The sign-in page's script, not its `<form>`, does the work:
+The sign-in page's script, not its `<form>`, does the work. Steps 1 to 3
+were observed on 2026-11-19; 4 and 5 are from the bundle.
 
-1. `POST /api/invita/session/generate_login_token?login_method=username`
-   (empty form): a login token and a `notBeforeDelay` to wait before using
-   it.
-2. `POST /api/invita/session/login`, form fields `login_token`, `username`,
-   `password`: on success `data.mfa_token` and `data.factors` (the email
-   addresses and phone numbers a code can go to). An answer with
-   `error_message: "invalid_login_token"` is retried after 2 s.
-3. The page moves to the code step, carrying `mfa_token`, `username` and
-   `factors` in its query.
-4. `POST /api/invita/session/send_otp`, fields `username`, `mfa_token`,
-   `factor_id`: sends the code.
-5. `POST /content/oneblood/us/en/jcr:content.invita.json?type=POST_LOGIN_OTP`,
+1. `POST /api/invita/session/generate_login_token?login_method=username`,
+   an empty `multipart/form-data` body: `200` JSON with a login token and a
+   `notBeforeDelay` to wait before using it. It sets the load balancer's
+   `AWSALB` and `AWSALBCORS` cookies (7 days).
+2. `POST /api/invita/session/login`, fields `login_token`, `username`,
+   `password`: `202` JSON with `data.mfa_token` and `data.factors`, and a
+   `session` cookie with no expiry (it ends with the browser). An answer
+   with `error_message: "invalid_login_token"` is retried after 2 s.
+3. The page moves to `/sign-in/verify.html`, carrying `mfa_token`,
+   `username` and `factors` in its query. `factors` is a JSON list, one
+   entry per place a code can go: `factor_id` (`<type>_<medium id>`),
+   `medium_id`, `factor_type` (`Email` or `SMS`), the address or phone
+   number, and `confirmed`. The page asks to pick one, then "Send Code".
+4. *bundle:* `POST /api/invita/session/send_otp`, fields `username`,
+   `mfa_token`, `factor_id`: sends the code.
+5. *bundle:* `POST /content/oneblood/us/en/jcr:content.invita.json?type=POST_LOGIN_OTP`,
    fields `mfa_token`, `otp`: completes the sign-in and sets the session.
 
 Every sign-in asks for a code. Sign-out is
@@ -81,6 +86,12 @@ Appointments are booked and cancelled with `POST`s to the same resources
 naming an action, and any method but `GET`.
 
 ## Traps
+
+- Picking where the code goes is also a consent: the code page says that
+  choosing a method opts the account back into OneBlood's communications.
+  That click is the donor's, never a script's.
+- The Sign In control is an `<a class="cmp-button">`, not a submit button,
+  and there is no `<form>` around the fields.
 
 - The sign-in `<form>` has no action; the page's script sends the requests
   above. Copying the form would send nothing the site accepts.
