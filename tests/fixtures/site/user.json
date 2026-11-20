@@ -14,7 +14,7 @@
         "primary": true,
         "extension": "",
         "allow_texting": true,
-        "phone_type_id": "1",
+        "phone_type_id": "3",
         "phone_type_name": "Mobile",
         "phone_time_id": "1"
       }

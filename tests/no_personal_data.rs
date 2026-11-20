@@ -199,6 +199,13 @@ fn shaped(value: &str, prefix: &str, digits: usize) -> bool {
         .is_some_and(|d| d.len() == digits && d.chars().all(|c| c.is_ascii_digit()))
 }
 
+/// Zeros, then one digit (`0000001`): the shape the fixtures README gives
+/// ids that are not phone numbers. A JSON number of one digit counts, its
+/// zeros having been dropped.
+fn zeros_then_digit(s: &str) -> bool {
+    s.bytes().all(|b| b.is_ascii_digit()) && !s.is_empty() && s[..s.len() - 1].bytes().all(|b| b == b'0')
+}
+
 fn is_dummy_place(s: &str) -> bool {
     s.split(|c: char| !c.is_ascii_alphanumeric())
         .any(|w| w == "Example" || w == "Exampleton")
@@ -232,7 +239,7 @@ fn identity_fields_in_site_fixtures_use_dummy_values() {
                     "birth_date" | "date_of_birth" | "dob" => s.ends_with("-01-01"),
                     // A blood unit's number (ISBT 128), on each reading and donation.
                     "unit_number" => shaped(s, "SYNU", 9),
-                    "becs_id" | "sponsor_code" => s.bytes().all(|b| b.is_ascii_digit()) && is_dummy_number(s),
+                    "becs_id" | "sponsor_code" => zeros_then_digit(s),
                     "image_data" => s == "AAAA",
                     "token" => s == "example-token",
                     _ => return,
@@ -241,11 +248,14 @@ fn identity_fields_in_site_fixtures_use_dummy_values() {
                 *checked += 1;
             }
             serde_json::Value::Number(n) => {
-                if matches!(key, "donor_id" | "phone" | "number") {
-                    let s = n.to_string();
-                    assert!(is_dummy_number(&s), "{name}: `{key}` holds {s}, not a dummy");
-                    *checked += 1;
-                }
+                let s = n.to_string();
+                let ok = match key {
+                    "donor_id" | "phone" | "number" => is_dummy_number(&s),
+                    "becs_id" | "sponsor_code" => zeros_then_digit(&s),
+                    _ => return,
+                };
+                assert!(ok, "{name}: `{key}` holds {s}, not a dummy");
+                *checked += 1;
             }
             _ => {}
         }
@@ -294,6 +304,11 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
             "false positive: {dummy}: {:?}",
             scan_line(dummy)
         );
+    }
+    assert!(zeros_then_digit("0000001"));
+    assert!(zeros_then_digit("7"));
+    for real in ["5551234", "7777777", "0001001", "", "000000x"] {
+        assert!(!zeros_then_digit(real), "{real}");
     }
     assert!(shaped("SYND000001", "SYND", 6));
     assert!(!shaped("SYND00001", "SYND", 6));
