@@ -5,11 +5,12 @@ pages on www.oneblood.org (an Adobe Experience Manager site) whose scripts
 read same-origin JSON with a cookie session. oneblood reads that JSON, as
 the pages do, with `GET`s only.
 
-Status: sign-in steps 1 to 3 were observed on the portal on 2026-11-19.
-Everything else (sign-in steps 4 and 5, and every read under "Reads") was
-read from the site's public pages and its script bundle
-(`clientlib-site`) and is not yet confirmed against signed-in traffic; it
-is marked *bundle*.
+Status: sign-in steps 1 to 3 were observed on the portal on 2026-11-19,
+and the four reads oneblood makes (the account, a test's history,
+donations) on 2026-11-20, signed in, through `oneblood api`. Lines marked
+*bundle* were read from the site's script bundle (`clientlib-site`) and
+not seen on the wire: the requests behind sign-in steps 4 and 5, and the
+reads oneblood does not make.
 
 ## Where the portal is
 
@@ -35,11 +36,20 @@ were observed on 2026-11-19; 4 and 5 are from the bundle.
    `username` and `factors` in its query. `factors` is a JSON list, one
    entry per place a code can go: `factor_id` (`<type>_<medium id>`),
    `medium_id`, `factor_type` (`Email` or `SMS`), the address or phone
-   number, and `confirmed`. The page asks to pick one, then "Send Code".
-4. *bundle:* `POST /api/invita/session/send_otp`, fields `username`,
-   `mfa_token`, `factor_id`: sends the code.
-5. *bundle:* `POST /content/oneblood/us/en/jcr:content.invita.json?type=POST_LOGIN_OTP`,
-   fields `mfa_token`, `otp`: completes the sign-in and sets the session.
+   number, and `confirmed`. The page asks to pick one (radio buttons
+   `input[name=verification]`, valued with the `factor_id`; the Email one
+   is hidden behind its `label`, so click the label), then "Send Code"
+   (`button.cmp-button`).
+4. The code arrives within a minute (the page says it may take 2 to 3),
+   by email from OneBlood's `notify.oneblood.org` address with the subject
+   "Verification Code", valid 10 minutes. *bundle:* the request is
+   `POST /api/invita/session/send_otp`, fields `username`, `mfa_token`,
+   `factor_id`.
+5. The code goes in `#otp-pass` and the page's "Sign In" button is
+   `#verify-button`. *bundle:* the request is
+   `POST /content/oneblood/us/en/jcr:content.invita.json?type=POST_LOGIN_OTP`,
+   fields `mfa_token`, `otp`, which completes the sign-in and sets the
+   session, `userLoggedIn` among it.
 
 Every sign-in asks for a code. Sign-out is
 `POST /content/oneblood/us/en/jcr:content.invita.json?type=POST_LOGOUT`.
@@ -51,30 +61,41 @@ The pages tell a signed-in visitor by the cookie `userLoggedIn=true`; the
 
 ## Reads
 
-All under `/api/invita/mobileuser/resource`, answering
-`{"status": "success", "data": …}`, or `{"status": "error", …}` with
-`metadata.status_code` and `error_message`.
+All `GET`s under `/api/invita/mobileuser/resource`. A signed-in answer is
+`200` JSON in one envelope: `status` (`"success"`), `response_timestamp`
+(an HTTP date), `data`, `rows` (how many items, or keys, `data` holds) and
+`token` (a long opaque string; oneblood ignores it and never prints it).
+A visitor's answer is `{"status": "error", …}` with `metadata.status_code`
+and `error_message` (*bundle*). Every value in `data` is a string except
+booleans and a few integers, and ids are digit strings.
 
-| Read | Path | `data` (bundle) |
+| Read | Path | `data`, as observed |
 |---|---|---|
-| The account | `/api/invita/mobileuser/resource` | `donor_id` (a prospect who has not donated has `id` only), `user_type`, `first_name`, `last_name`, `username`, `blood_type` (`A Positive` … `O Negative`), `address`, `emails[].email`, `phones[]` |
-| A test's history | `…/resource/?tests=<id>` | `tests[]` of `{test_date: "YYYY-MM-DD", value}` |
-| Donations | `…/resource/?donations=1` | a list (or `donations[]`) of `{date, procedure, location, center_id}`; `center_id` `"0"` is a mobile drive |
-| Appointments | `…/resource/?appointments=1` | booked appointments |
-| Blood type alone | `…/resource/?blood_type=1` | `blood_type` |
-| Gallons given | `…/resource/?gallon_level=1` | `gallon_level` |
-| Eligibility | `…/resource/?eligibility=1` | next eligible dates per procedure |
+| The account | `/api/invita/mobileuser/resource` | `id`, `donor_id`, `user_type` (`donor`), `username`, `first_name`, `last_name`, `blood_type` (`A Positive` … `O Negative`), `birth_date`, `gender`, `address` (one line), `emails[]` (`id`, `email`, `primary`), `phones[]` (`id`, `number`, `primary`, `extension`, `allow_texting`, `phone_type_id`, `phone_type_name`, `phone_time_id`), `phone_types[]`, `avatar` (`image_data`, base64, `image_mime`), `linked_accounts[]`, `gallon_level`, `eligibility[]` (`name`, `date`, `sort`: the next date for each procedure), `lifetime_donations`, `reset_password`, `pending_deletion`, `coverage_date`, `profile_type_ids[]` |
+| A test's history | `…/resource/?tests=<id>` | `tests[]`, each `id`, `becs_id`, `test_type_id`, `test_type_name`, `value`, `value_alt`, `test_date` (`YYYY-MM-DD`), `unit_number` (the blood unit's number), `created` (`YYYY-MM-DD HH:MM:SS`) |
+| Donations | `…/resource/?donations=1` | `donations[]`, each `date`, `id`, `center_id` (`"0"` with `location_type_text` `Bloodmobile`: a mobile drive), `procedure` (free text, such as `2 Units RBC`), `donation_type`, `donation_status`, `location`, `location_id`, `location_type_text`, `unit_number`, `sponsor_code`, `concierge`, `survey_taken`, `survey_available`, `points_earned`, `optimum_donation`, `donation_category` |
+| Appointments | `…/resource/?appointments=1` | *bundle:* booked appointments |
+| Blood type alone | `…/resource/?blood_type=1` | *bundle:* `blood_type` |
+| Gallons given | `…/resource/?gallon_level=1` | *bundle:* `gallon_level` |
+| Eligibility | `…/resource/?eligibility=1` | *bundle:* next eligible dates per procedure |
 
-Test ids, as the health summary's charts use them:
+oneblood reads, of these: `donor_id`, `first_name`, `last_name` and
+`blood_type` from the account; `test_date` and `value` from each test;
+`date`, `procedure`, `location` and `center_id` from each donation. It
+never reads the contact details, the avatar, the unit numbers or the
+token, and never prints them.
 
-| id | Test | Unit the chart shows |
+Test ids, with the portal's `test_type_name` for each (observed) and the
+unit its health-summary chart shows:
+
+| id | `test_type_name` | Unit the chart shows |
 |---|---|---|
-| 1 | Cholesterol | mg/dL |
-| 3 | Blood pressure, systolic | mmHg |
-| 4 | Blood pressure, diastolic | mmHg |
-| 5 | Pulse | beats per minute |
-| 6 | Temperature | Fahrenheit |
-| 9 | "Iron count" (hemoglobin) | g/dL |
+| 1 | `Cholesterol` | mg/dL |
+| 3 | `Blood Pressure (Systolic)` | mmHg |
+| 4 | `Blood Pressure (Diastolic)` | mmHg |
+| 5 | `Pulse` | beats per minute |
+| 6 | `Temperature` | Fahrenheit |
+| 9 | `Iron` (the hemoglobin screen, "iron count" on the chart) | g/dL |
 
 The backend's name, "invita", is in every path; who makes it is not stated
 anywhere public.

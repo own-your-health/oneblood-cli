@@ -71,9 +71,49 @@ const PUBLIC_CODES: &[&str] = &[
 
 const PUBLIC_EMAIL_DOMAINS: &[&str] = &["example.com", "oneblood.org"];
 
+/// `line` with each `YYYY-MM-DD HH:MM:SS` (or `T` between) blanked: the
+/// portal's own time stamps, which read as a phone number once the
+/// separators are gone.
+fn without_datetimes(line: &str) -> String {
+    let b = line.as_bytes();
+    let mut out = String::with_capacity(line.len());
+    let mut i = 0;
+    while i < b.len() {
+        let is = |j: usize, digits: bool| b.get(i + j).is_some_and(|c| c.is_ascii_digit() == digits);
+        let at = |j: usize, c: u8| b.get(i + j) == Some(&c);
+        let datetime = (0..4).all(|j| is(j, true))
+            && at(4, b'-')
+            && is(5, true)
+            && is(6, true)
+            && at(7, b'-')
+            && is(8, true)
+            && is(9, true)
+            && (at(10, b' ') || at(10, b'T'))
+            && is(11, true)
+            && is(12, true)
+            && at(13, b':')
+            && is(14, true)
+            && is(15, true)
+            && at(16, b':')
+            && is(17, true)
+            && is(18, true);
+        if datetime {
+            out.push_str("<datetime>");
+            i += 19;
+        } else {
+            let c = line[i..].chars().next().unwrap();
+            out.push(c);
+            i += c.len_utf8();
+        }
+    }
+    out
+}
+
 /// The personal-data shapes on one line, each as `kind value`.
 fn scan_line(line: &str) -> Vec<String> {
     let mut findings = Vec::new();
+    let line = without_datetimes(line);
+    let line = line.as_str();
     let phoneish = line.replace(['(', ')', '-', '.', ' '], "");
     for n in digits_run(line, 7)
         .into_iter()
@@ -159,6 +199,13 @@ fn shaped(value: &str, prefix: &str, digits: usize) -> bool {
         .is_some_and(|d| d.len() == digits && d.chars().all(|c| c.is_ascii_digit()))
 }
 
+/// Zeros, then one digit (`0000001`): the shape the fixtures README gives
+/// ids that are not phone numbers. A JSON number of one digit counts, its
+/// zeros having been dropped.
+fn zeros_then_digit(s: &str) -> bool {
+    s.bytes().all(|b| b.is_ascii_digit()) && !s.is_empty() && s[..s.len() - 1].bytes().all(|b| b == b'0')
+}
+
 fn is_dummy_place(s: &str) -> bool {
     s.split(|c: char| !c.is_ascii_alphanumeric())
         .any(|w| w == "Example" || w == "Exampleton")
@@ -190,17 +237,25 @@ fn identity_fields_in_site_fixtures_use_dummy_values() {
                     }
                     "zip" | "zip_code" | "postal_code" => s.chars().all(|c| c == '0'),
                     "birth_date" | "date_of_birth" | "dob" => s.ends_with("-01-01"),
+                    // A blood unit's number (ISBT 128), on each reading and donation.
+                    "unit_number" => shaped(s, "SYNU", 9),
+                    "becs_id" | "sponsor_code" => zeros_then_digit(s),
+                    "image_data" => s == "AAAA",
+                    "token" => s == "example-token",
                     _ => return,
                 };
                 assert!(ok, "{name}: `{key}` holds `{s}`, not a dummy");
                 *checked += 1;
             }
             serde_json::Value::Number(n) => {
-                if matches!(key, "donor_id" | "phone" | "number") {
-                    let s = n.to_string();
-                    assert!(is_dummy_number(&s), "{name}: `{key}` holds {s}, not a dummy");
-                    *checked += 1;
-                }
+                let s = n.to_string();
+                let ok = match key {
+                    "donor_id" | "phone" | "number" => is_dummy_number(&s),
+                    "becs_id" | "sponsor_code" => zeros_then_digit(&s),
+                    _ => return,
+                };
+                assert!(ok, "{name}: `{key}` holds {s}, not a dummy");
+                *checked += 1;
             }
             _ => {}
         }
@@ -217,7 +272,7 @@ fn identity_fields_in_site_fixtures_use_dummy_values() {
         walk(&name, "", &v, &mut checked);
     }
     assert!(
-        checked >= 8,
+        checked >= 40,
         "only {checked} identity fields found; did the fixtures change?"
     );
 }
@@ -231,6 +286,7 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "mail someone@gmail.com",
         "lives at 1234 NW Oak St, Somewhere",
         "donor 7342918",
+        "call 772-404-1234 at 2025-08-02 12:00:00",
     ] {
         assert!(!scan_line(real).is_empty(), "missed: {real}");
     }
@@ -241,12 +297,18 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "alex@example.com",
         "100 Example St, Exampleton",
         "2025-03-14",
+        "\"created\": \"2025-08-02 12:00:00\"",
     ] {
         assert!(
             scan_line(dummy).is_empty(),
             "false positive: {dummy}: {:?}",
             scan_line(dummy)
         );
+    }
+    assert!(zeros_then_digit("0000001"));
+    assert!(zeros_then_digit("7"));
+    for real in ["5551234", "7777777", "0001001", "", "000000x"] {
+        assert!(!zeros_then_digit(real), "{real}");
     }
     assert!(shaped("SYND000001", "SYND", 6));
     assert!(!shaped("SYND00001", "SYND", 6));
