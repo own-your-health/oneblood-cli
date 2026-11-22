@@ -6,6 +6,12 @@ resource carries `meta.source` `oneblood:portal` and the tag
 `mapped-from-donor-portal`
 (`https://github.com/piekstra/oneblood-cli/fhir/tag`).
 
+The tag's system and the donor id's system are names, not links. They keep
+the repository's first owner, piekstra, after its move to own-your-health:
+records already filed carry them, and medrec matches a Patient by its
+identifier's system and value, so a new system would file the same donor
+twice.
+
 ## Resources
 
 | Resource | id | From |

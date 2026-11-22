@@ -17,7 +17,7 @@ use crate::cli::*;
 use crate::model::Test;
 use crate::portal::{self, Env, Site};
 
-const REPO: &str = "piekstra/oneblood-cli";
+const REPO: &str = "own-your-health/oneblood-cli";
 pub const PROFILE_ENV: &str = "ONEBLOOD_PROFILE";
 /// `info`'s profiles.
 pub const PROFILES: &[&str] = &[pk_med_records::PROFILE];

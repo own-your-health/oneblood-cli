@@ -9,7 +9,7 @@ temperature and hemoglobin (the portal's "iron count"). `oneblood` reads
 them from the donor portal you already sign in to, as you, and prints them
 or writes them as FHIR R4 for a personal medical-records store
 (`records-stream/v1`, the `health-records/v1` profile of
-[medical-common](https://github.com/piekstra/medical-common), read by
+[medical-common](https://github.com/own-your-health/medical-common), read by
 `medrec import --from oneblood`).
 
 ## Who it is for
@@ -27,7 +27,7 @@ JSON those pages read (`docs/api.md`).
 ## Install
 
 ```sh
-cargo install --git https://github.com/piekstra/oneblood-cli --locked
+cargo install --git https://github.com/own-your-health/oneblood-cli --locked
 # or download a release, oneblood-<target>.tar.gz (macOS Apple Silicon or
 # Intel, Linux x86_64), put `oneblood` on your PATH; later: oneblood self-update
 ```
@@ -47,7 +47,7 @@ oneblood readings list --profile me --test blood-pressure --since 2025-01-01
 oneblood records export --profile me --ndjson > readings.ndjson
 ```
 
-Into [medrec](https://github.com/piekstra/medrec-cli), the records store:
+Into [medrec](https://github.com/own-your-health/medrec-cli), the records store:
 
 ```sh
 medrec profiles add records
