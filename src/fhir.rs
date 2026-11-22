@@ -25,6 +25,9 @@ pub const ORGANIZATION_ID: &str = "oneblood";
 pub const ORGANIZATION_NAME: &str = "OneBlood";
 pub const SITE: &str = "https://www.oneblood.org";
 pub const META_SOURCE: &str = "oneblood:portal";
+// Both systems keep the repository's first owner after its move to
+// own-your-health: filed records carry them, and medrec matches a Patient by
+// identifier system and value (docs/fhir.md).
 pub const TAG_SYSTEM: &str = "https://github.com/piekstra/oneblood-cli/fhir/tag";
 pub const TAG_MAPPED: &str = "mapped-from-donor-portal";
 /// The donor id's identifier system: oneblood's own URI, since OneBlood
