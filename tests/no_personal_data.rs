@@ -109,10 +109,33 @@ fn without_datetimes(line: &str) -> String {
     out
 }
 
+/// `line` with each lowercase hex digest (a run of 32 or more hex digits
+/// holding a letter, such as a pinned SHA-256) blanked: its digit runs are
+/// not numbers.
+fn without_digests(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut run = String::new();
+    let flush = |run: &mut String, out: &mut String| {
+        let digest = run.len() >= 32 && run.bytes().any(|b| b.is_ascii_lowercase());
+        out.push_str(if digest { "<digest>" } else { run.as_str() });
+        run.clear();
+    };
+    for c in line.chars() {
+        if c.is_ascii_digit() || ('a'..='f').contains(&c) {
+            run.push(c);
+        } else {
+            flush(&mut run, &mut out);
+            out.push(c);
+        }
+    }
+    flush(&mut run, &mut out);
+    out
+}
+
 /// The personal-data shapes on one line, each as `kind value`.
 fn scan_line(line: &str) -> Vec<String> {
     let mut findings = Vec::new();
-    let line = without_datetimes(line);
+    let line = without_digests(&without_datetimes(line));
     let line = line.as_str();
     let phoneish = line.replace(['(', ')', '-', '.', ' '], "");
     for n in digits_run(line, 7)
@@ -297,6 +320,7 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "donor 7342918",
         "call 772-404-1234 at 2025-08-02 12:00:00",
         "the status was 200, then 1234 Oak St",
+        "bad1234567 is not a digest",
     ] {
         assert!(!scan_line(real).is_empty(), "missed: {real}");
     }
@@ -309,6 +333,7 @@ fn the_scanner_flags_real_shapes_and_passes_dummies() {
         "2025-03-14",
         "\"created\": \"2025-08-02 12:00:00\"",
         "one 401 and 302), drives every command",
+        "SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
     ] {
         assert!(
             scan_line(dummy).is_empty(),
